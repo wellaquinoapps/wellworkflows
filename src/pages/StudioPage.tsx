@@ -16,6 +16,7 @@ import { AspectRatio, LocalReferenceImage, Workflow, WorkflowImage } from '@/typ
 import { ImageUploader } from '@/components/studio/ImageUploader';
 import { AspectRatioSelector } from '@/components/studio/AspectRatioSelector';
 import { GeneratedImageCard } from '@/components/studio/GeneratedImageCard';
+import { WorkflowNodeCanvas } from '@/components/studio/WorkflowNodeCanvas';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface StudioPageProps {
@@ -306,12 +307,35 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
         </div>
       )}
 
+      {/* Visual Workflow Canvas (Google Flow style connections) */}
+      <WorkflowNodeCanvas
+        referenceImages={referenceImages}
+        prompt={prompt}
+        aspectRatio={aspectRatio}
+        outputCount={outputCount}
+        results={generationResults}
+        isGenerating={isGenerating}
+        onOpenImageUpload={() => {
+          const el = document.getElementById('image-uploader-section');
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        onEditPrompt={() => {
+          const el = document.getElementById('prompt-section');
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        onSelectRatio={() => {
+          const el = document.getElementById('ratio-section');
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        onPreviewImage={(url) => setPreviewModalUrl(url)}
+      />
+
       {/* Main Studio Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Control Column (Inputs) */}
         <div className="lg:col-span-7 space-y-6">
           {/* Reference Images Component */}
-          <div className="bg-surface border border-surface-border rounded-2xl p-5 shadow-sm">
+          <div id="image-uploader-section" className="bg-surface border border-surface-border rounded-2xl p-5 shadow-sm scroll-mt-20">
             <ImageUploader
               images={referenceImages}
               onAddImage={handleAddImage}
@@ -322,7 +346,7 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
           </div>
 
           {/* Prompt Section */}
-          <div className="bg-surface border border-surface-border rounded-2xl p-5 space-y-4 shadow-sm">
+          <div id="prompt-section" className="bg-surface border border-surface-border rounded-2xl p-5 space-y-4 shadow-sm scroll-mt-20">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="text-sm font-semibold text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
@@ -391,7 +415,7 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
           </div>
 
           {/* Aspect Ratio & Quantity */}
-          <div className="bg-surface border border-surface-border rounded-2xl p-5 space-y-5 shadow-sm">
+          <div id="ratio-section" className="bg-surface border border-surface-border rounded-2xl p-5 space-y-5 shadow-sm scroll-mt-20">
             <AspectRatioSelector
               value={aspectRatio}
               onChange={setAspectRatio}
