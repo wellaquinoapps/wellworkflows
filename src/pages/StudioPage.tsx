@@ -26,6 +26,9 @@ interface StudioPageProps {
 const COMPOSITION_SAMPLE_PROMPT = 
   "Insira o produto da segunda imagem no cenário da primeira. Preserve ao máximo formato, cores, textura, logotipo e detalhes do produto. Ajuste perspectiva, escala, iluminação e sombras para uma integração natural.";
 
+const MULTI_PRODUCT_SAMPLE_PROMPT =
+  "Insira os produtos das imagens 2 e 3 no cenário da imagem 1. Preserve com máxima fidelidade os logotipos, formatos, texturas e cores de cada produto. Posicione-os de forma harmoniosa no ambiente, ajustando escala, iluminação, reflexos e sombras de contato realistas.";
+
 export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => {
   // Workflow Form State
   const [workflowName, setWorkflowName] = useState('Novo Workflow');
@@ -320,18 +323,27 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
 
           {/* Prompt Section */}
           <div className="bg-surface border border-surface-border rounded-2xl p-5 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="text-sm font-semibold text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
                 Instrução Principal (Prompt)
               </label>
-              <button
-                type="button"
-                onClick={() => setPrompt(COMPOSITION_SAMPLE_PROMPT)}
-                className="text-xs text-primary-light hover:text-white underline transition-colors"
-              >
-                Inserir exemplo de composição
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPrompt(MULTI_PRODUCT_SAMPLE_PROMPT)}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                >
+                  Exemplo: 1 Cenário + 2 Produtos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrompt(COMPOSITION_SAMPLE_PROMPT)}
+                  className="text-xs text-primary-light hover:text-white underline transition-colors"
+                >
+                  Exemplo: 1 Cenário + 1 Produto
+                </button>
+              </div>
             </div>
 
             <textarea

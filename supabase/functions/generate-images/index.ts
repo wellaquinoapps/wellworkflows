@@ -69,6 +69,7 @@ serve(async (req: Request) => {
           loadedReferenceImages.push({
             bytes: new Uint8Array(arrayBuf),
             mimeType: ref.mime_type || "image/jpeg",
+            role: ref.prompt || undefined, // Role label was saved in prompt column
           });
         }
       }

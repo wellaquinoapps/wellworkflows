@@ -9,6 +9,7 @@ export interface GeminiGenerateOptions {
   referenceImages?: Array<{
     bytes: Uint8Array;
     mimeType: string;
+    role?: string; // 'Cenário' | 'Produto' | 'Pessoa' | 'Referência de estilo'
   }>;
 }
 
@@ -75,9 +76,19 @@ export async function generateSingleImageWithGemini(
   // Endpoint: predict / generateImages
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
+  // Build intelligent multimodal prompt instructions according to roles (Scenario + Multiple Products)
   let enhancedPrompt = prompt;
   if (referenceImages.length > 0) {
-    enhancedPrompt = `${prompt} (Preserve product identity, colors, logos, and integrate naturally into lighting, reflections, and perspective)`;
+    const hasScenario = referenceImages.some(img => img.role?.toLowerCase().includes('cenário') || img.role?.toLowerCase().includes('cenario'));
+    const productCount = referenceImages.filter(img => img.role?.toLowerCase().includes('produto')).length;
+
+    if (hasScenario && productCount >= 2) {
+      enhancedPrompt = `${prompt} [Instruction: Seamlessly integrate the multiple reference products into the reference background scene. Faithfully maintain each product's shape, color, logos, branding, and textures. Harmonize perspective, scale, lighting, contact shadows, and natural reflections between all products and the environment.]`;
+    } else if (hasScenario && productCount === 1) {
+      enhancedPrompt = `${prompt} [Instruction: Place the product reference into the background scene. Faithfully preserve identity, geometry, logos, and materials with realistic lighting and casting shadows.]`;
+    } else {
+      enhancedPrompt = `${prompt} [Instruction: Faithfully preserve identity, logos, and textures of all reference images, integrating them naturally with harmonious lighting, shadows, and perspective.]`;
+    }
   }
 
   const payload: Record<string, unknown> = {
