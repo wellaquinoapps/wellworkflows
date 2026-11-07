@@ -248,8 +248,31 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
     [setEdges]
   );
 
+  const handleCanvasDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        Array.from(e.dataTransfer.files).forEach((file) => {
+          if (['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            const role = referenceImages.length === 0 ? 'Cenário' : 'Produto';
+            onAddImage(file, role);
+          }
+        });
+      }
+    },
+    [onAddImage, referenceImages.length]
+  );
+
+  const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
   return (
-    <div className="w-full h-[750px] bg-[#0b0c10] border border-surface-border rounded-2xl overflow-hidden shadow-2xl relative">
+    <div
+      onDrop={handleCanvasDrop}
+      onDragOver={handleCanvasDragOver}
+      className="w-full h-[750px] bg-[#0b0c10] border border-surface-border rounded-2xl overflow-hidden shadow-2xl relative"
+    >
       {/* Top Floating Control Bar */}
       <div className="absolute top-4 left-4 z-20 flex items-center gap-3">
         <div className="px-4 py-2 rounded-xl bg-surface/90 border border-surface-border backdrop-blur-md shadow-lg flex items-center gap-2">

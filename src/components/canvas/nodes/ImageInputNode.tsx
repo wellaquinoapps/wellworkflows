@@ -17,12 +17,38 @@ interface ImageInputNodeProps {
 
 export const ImageInputNode: React.FC<ImageInputNodeProps> = ({ id, data }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = React.useState(false);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       data.onImageChange?.(id, file, data.roleType);
     }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        data.onImageChange?.(id, file, data.roleType);
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
   };
 
   return (
@@ -50,7 +76,12 @@ export const ImageInputNode: React.FC<ImageInputNodeProps> = ({ id, data }) => {
       <div className="p-3 space-y-2.5">
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="relative aspect-video w-full rounded-lg bg-black/60 border border-dashed border-surface-border hover:border-primary/50 flex flex-col items-center justify-center cursor-pointer overflow-hidden group transition-all"
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          className={`relative aspect-video w-full rounded-lg bg-black/60 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden group transition-all ${
+            isDragOver ? 'border-primary bg-primary/20 scale-[1.02]' : 'border-surface-border hover:border-primary/50'
+          }`}
         >
           {data.previewUrl ? (
             <>
