@@ -42,14 +42,22 @@ export const SettingsPage: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await fetch(
-        'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/manage-api-credentials?action=list',
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
+      // Try local backend proxy first, fallback to Supabase Edge Function
+      const endpoint = '/api/manage-credentials?action=list';
+      let res: Response;
+      try {
+        res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) throw new Error('Local fallback');
+      } catch {
+        res = await fetch(
+          'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/manage-api-credentials?action=list',
+          {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }
+        );
+      }
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Erro ao carregar credenciais.');
@@ -74,23 +82,38 @@ export const SettingsPage: React.FC = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/manage-api-credentials',
-        {
+      const payload = {
+        action: 'create',
+        label: label.trim(),
+        apiKey: apiKey.trim(),
+        googleProjectRef: googleProjectRef.trim() || null,
+        priority: Number(priority),
+      };
+
+      let res: Response;
+      try {
+        res = await fetch('/api/manage-credentials', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({
-            action: 'create',
-            label: label.trim(),
-            apiKey: apiKey.trim(),
-            googleProjectRef: googleProjectRef.trim() || null,
-            priority: Number(priority),
-          }),
-        }
-      );
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Local fallback');
+      } catch {
+        res = await fetch(
+          'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/manage-api-credentials',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+      }
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Erro ao salvar credencial.');
@@ -113,17 +136,29 @@ export const SettingsPage: React.FC = () => {
     try {
       setStatusMessage('Testando conexão com a API Google Gemini...');
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/manage-api-credentials',
-        {
+      let res: Response;
+      try {
+        res = await fetch('/api/manage-credentials', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({ action: 'test', id }),
-        }
-      );
+        });
+      } catch {
+        res = await fetch(
+          'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/manage-api-credentials',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ action: 'test', id }),
+          }
+        );
+      }
 
       const json = await res.json();
       if (json.valid) {
@@ -142,17 +177,28 @@ export const SettingsPage: React.FC = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await fetch(
-        'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/manage-api-credentials',
-        {
+      try {
+        await fetch('/api/manage-credentials', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({ action: 'delete', id: deleteModalCredId }),
-        }
-      );
+        });
+      } catch {
+        await fetch(
+          'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/manage-api-credentials',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ action: 'delete', id: deleteModalCredId }),
+          }
+        );
+      }
       setDeleteModalCredId(null);
       await loadCredentials();
     } catch (err) {
