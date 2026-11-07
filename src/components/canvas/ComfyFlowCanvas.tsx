@@ -69,45 +69,34 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
     const nodes: Node[] = [];
 
     // Image Nodes on the Left (x: 50)
-    if (referenceImages.length === 0) {
+    referenceImages.forEach((img, idx) => {
       nodes.push({
-        id: 'img-node-default-1',
+        id: `img-node-${img.id}`,
         type: 'imageInput',
-        position: { x: 50, y: 50 },
+        position: { x: 50, y: 50 + idx * 270 },
         data: {
-          label: 'Cenário (Fundo)',
-          roleType: 'Cenário',
+          label: `${img.roleType} (#${idx + 1})`,
+          roleType: img.roleType,
+          previewUrl: img.previewUrl,
+          imageFile: img.file,
           onImageChange: (_id: string, file: File, role: any) => onAddImage(file, role),
+          onRemove: (id: string) => onRemoveImage(id.replace('img-node-', '')),
+          onRoleChange: (id: string, role: any) => onUpdateRole(id.replace('img-node-', ''), role),
         },
       });
-      nodes.push({
-        id: 'img-node-default-2',
-        type: 'imageInput',
-        position: { x: 50, y: 320 },
-        data: {
-          label: 'Produto #1 (Inserção)',
-          roleType: 'Produto',
-          onImageChange: (_id: string, file: File, role: any) => onAddImage(file, role),
-        },
-      });
-    } else {
-      referenceImages.forEach((img, idx) => {
-        nodes.push({
-          id: `img-node-${img.id}`,
-          type: 'imageInput',
-          position: { x: 50, y: 50 + idx * 260 },
-          data: {
-            label: `${img.roleType} (#${idx + 1})`,
-            roleType: img.roleType,
-            previewUrl: img.previewUrl,
-            imageFile: img.file,
-            onImageChange: (_id: string, file: File, role: any) => onAddImage(file, role),
-            onRemove: (id: string) => onRemoveImage(id.replace('img-node-', '')),
-            onRoleChange: (id: string, role: any) => onUpdateRole(id.replace('img-node-', ''), role),
-          },
-        });
-      });
-    }
+    });
+
+    // Always keep an "Empty / Add New Image" node ready at the end
+    nodes.push({
+      id: `img-node-placeholder-${referenceImages.length}`,
+      type: 'imageInput',
+      position: { x: 50, y: 50 + referenceImages.length * 270 },
+      data: {
+        label: referenceImages.length === 0 ? 'Cenário (Fundo)' : `Produto #${referenceImages.length + 1} (Inserção)`,
+        roleType: referenceImages.length === 0 ? 'Cenário' : 'Produto',
+        onImageChange: (_id: string, file: File, role: any) => onAddImage(file, role),
+      },
+    });
 
     // Prompt Node (x: 400, y: 50)
     nodes.push({
@@ -185,38 +174,29 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
       },
     ];
 
-    if (referenceImages.length === 0) {
+    // Connections for each loaded image
+    referenceImages.forEach((img, idx) => {
       edges.push({
-        id: 'e-img1-model',
-        source: 'img-node-default-1',
+        id: `e-img-${img.id}-model`,
+        source: `img-node-${img.id}`,
         sourceHandle: 'image-out',
         target: 'node-model',
-        targetHandle: 'scenario-in',
+        targetHandle: idx === 0 ? 'scenario-in' : 'product-in',
         animated: true,
-        style: { stroke: '#34d399', strokeWidth: 2 },
+        style: { stroke: idx === 0 ? '#34d399' : '#22d3ee', strokeWidth: 2 },
       });
-      edges.push({
-        id: 'e-img2-model',
-        source: 'img-node-default-2',
-        sourceHandle: 'image-out',
-        target: 'node-model',
-        targetHandle: 'product-in',
-        animated: true,
-        style: { stroke: '#22d3ee', strokeWidth: 2 },
-      });
-    } else {
-      referenceImages.forEach((img, idx) => {
-        edges.push({
-          id: `e-img-${img.id}-model`,
-          source: `img-node-${img.id}`,
-          sourceHandle: 'image-out',
-          target: 'node-model',
-          targetHandle: idx === 0 ? 'scenario-in' : 'product-in',
-          animated: true,
-          style: { stroke: idx === 0 ? '#34d399' : '#22d3ee', strokeWidth: 2 },
-        });
-      });
-    }
+    });
+
+    // Connection for placeholder node
+    edges.push({
+      id: `e-img-placeholder-model`,
+      source: `img-node-placeholder-${referenceImages.length}`,
+      sourceHandle: 'image-out',
+      target: 'node-model',
+      targetHandle: referenceImages.length === 0 ? 'scenario-in' : 'product-in',
+      animated: true,
+      style: { stroke: '#94a3b8', strokeWidth: 1.5, strokeDasharray: '4 4' },
+    });
 
     return edges;
   }, [referenceImages, isGenerating]);
@@ -281,9 +261,29 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
             Canvas Interativo de Nós (ComfyUI / Flow)
           </span>
           <span className="text-[10px] text-slate-400 font-mono">
-            {referenceImages.length} Nós de Imagem
+            {referenceImages.length} Imagens Conectadas
           </span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.onchange = (e: any) => {
+              if (e.target.files && e.target.files[0]) {
+                const role = referenceImages.length === 0 ? 'Cenário' : 'Produto';
+                onAddImage(e.target.files[0], role);
+              }
+            };
+            fileInput.click();
+          }}
+          className="px-3.5 py-2 rounded-xl bg-surface/90 hover:bg-surface border border-surface-border text-xs font-medium text-slate-200 hover:text-white transition-colors flex items-center gap-1.5 shadow-md"
+        >
+          <Plus className="w-3.5 h-3.5 text-primary-light" />
+          + Adicionar Mais Um Nó de Imagem
+        </button>
 
         <button
           type="button"
