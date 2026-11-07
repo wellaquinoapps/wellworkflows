@@ -16,7 +16,7 @@ import { AspectRatio, LocalReferenceImage, Workflow, WorkflowImage } from '@/typ
 import { ImageUploader } from '@/components/studio/ImageUploader';
 import { AspectRatioSelector } from '@/components/studio/AspectRatioSelector';
 import { GeneratedImageCard } from '@/components/studio/GeneratedImageCard';
-import { WorkflowNodeCanvas } from '@/components/studio/WorkflowNodeCanvas';
+import { ComfyFlowCanvas } from '@/components/canvas/ComfyFlowCanvas';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface StudioPageProps {
@@ -307,26 +307,30 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
         </div>
       )}
 
-      {/* Visual Workflow Canvas (Google Flow style connections) */}
-      <WorkflowNodeCanvas
+      {/* Interactive Node Graph Canvas (ComfyUI / Flow Style) */}
+      <ComfyFlowCanvas
         referenceImages={referenceImages}
         prompt={prompt}
         aspectRatio={aspectRatio}
         outputCount={outputCount}
         results={generationResults}
         isGenerating={isGenerating}
-        onOpenImageUpload={() => {
-          const el = document.getElementById('image-uploader-section');
-          el?.scrollIntoView({ behavior: 'smooth' });
+        onAddImage={(file, role) => {
+          const newImg: LocalReferenceImage = {
+            id: Math.random().toString(36).substring(7),
+            file,
+            previewUrl: URL.createObjectURL(file),
+            roleType: role || (referenceImages.length === 0 ? 'Cenário' : 'Produto'),
+            position: referenceImages.length + 1,
+          };
+          setReferenceImages(prev => [...prev, newImg]);
         }}
-        onEditPrompt={() => {
-          const el = document.getElementById('prompt-section');
-          el?.scrollIntoView({ behavior: 'smooth' });
-        }}
-        onSelectRatio={() => {
-          const el = document.getElementById('ratio-section');
-          el?.scrollIntoView({ behavior: 'smooth' });
-        }}
+        onRemoveImage={handleRemoveImage}
+        onUpdateRole={handleUpdateRole}
+        onPromptChange={setPrompt}
+        onRatioChange={setAspectRatio}
+        onCountChange={setOutputCount}
+        onExecute={() => handleGenerate(false)}
         onPreviewImage={(url) => setPreviewModalUrl(url)}
       />
 

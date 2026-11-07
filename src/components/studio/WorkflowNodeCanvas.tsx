@@ -268,3 +268,4 @@ export const WorkflowNodeCanvas: React.FC<WorkflowNodeCanvasProps> = ({
     </div>
   );
 };
+
