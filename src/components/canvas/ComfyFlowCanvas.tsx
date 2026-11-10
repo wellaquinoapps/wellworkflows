@@ -18,7 +18,7 @@ import { ImageInputNode } from './nodes/ImageInputNode';
 import { PromptNode } from './nodes/PromptNode';
 import { NanoBananaModelNode } from './nodes/NanoBananaModelNode';
 import { OutputPreviewNode } from './nodes/OutputPreviewNode';
-import { AspectRatio, LocalReferenceImage, WorkflowImage } from '@/types';
+import { AspectRatio, ImageModel, LocalReferenceImage, WorkflowImage } from '@/types';
 import { Plus, Play, Sparkles, RefreshCw } from 'lucide-react';
 
 interface ComfyFlowCanvasProps {
@@ -26,6 +26,7 @@ interface ComfyFlowCanvasProps {
   prompt: string;
   aspectRatio: AspectRatio;
   outputCount: number;
+  selectedModel: ImageModel;
   results: WorkflowImage[];
   isGenerating: boolean;
   onAddImage: (file: File, roleType: any) => void;
@@ -34,6 +35,7 @@ interface ComfyFlowCanvasProps {
   onPromptChange: (prompt: string) => void;
   onRatioChange: (ratio: AspectRatio) => void;
   onCountChange: (count: number) => void;
+  onModelChange: (model: ImageModel) => void;
   onExecute: () => void;
   onPreviewImage: (url: string) => void;
 }
@@ -43,6 +45,7 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
   prompt,
   aspectRatio,
   outputCount,
+  selectedModel,
   results,
   isGenerating,
   onAddImage,
@@ -51,6 +54,7 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
   onPromptChange,
   onRatioChange,
   onCountChange,
+  onModelChange,
   onExecute,
   onPreviewImage,
 }) => {
@@ -117,8 +121,10 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
       data: {
         aspectRatio,
         outputCount,
+        selectedModel,
         onRatioChange,
         onCountChange,
+        onModelChange,
       },
     });
 
@@ -140,6 +146,7 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
     prompt,
     aspectRatio,
     outputCount,
+    selectedModel,
     results,
     isGenerating,
     onAddImage,
@@ -148,6 +155,7 @@ export const ComfyFlowCanvas: React.FC<ComfyFlowCanvasProps> = ({
     onPromptChange,
     onRatioChange,
     onCountChange,
+    onModelChange,
     onPreviewImage,
   ]);
 

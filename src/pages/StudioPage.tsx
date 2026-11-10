@@ -12,7 +12,7 @@ import {
   X
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { AspectRatio, LocalReferenceImage, Workflow, WorkflowImage } from '@/types';
+import { AspectRatio, ImageModel, LocalReferenceImage, Workflow, WorkflowImage } from '@/types';
 import { ImageUploader } from '@/components/studio/ImageUploader';
 import { AspectRatioSelector } from '@/components/studio/AspectRatioSelector';
 import { GeneratedImageCard } from '@/components/studio/GeneratedImageCard';
@@ -36,6 +36,7 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1');
   const [outputCount, setOutputCount] = useState<number>(4);
+  const [selectedModel, setSelectedModel] = useState<ImageModel>('free-flux-synthesis');
   const [referenceImages, setReferenceImages] = useState<LocalReferenceImage[]>([]);
   const [individualPrompts, setIndividualPrompts] = useState<string[]>(['', '', '', '']);
   const [showIndividualPrompts, setShowIndividualPrompts] = useState(false);
@@ -84,21 +85,40 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
 
   const refreshWorkflowStatus = async (workflowId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      const res = await fetch(
-        `https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/get-generation-status?workflow_id=${workflowId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
+      // Query workflow images directly from Supabase
+      const { data: images, error } = await supabase
+        .from('workflow_images')
+        .select('*')
+        .eq('workflow_id', workflowId)
+        .order('position', { ascending: true });
 
-      if (res.ok) {
-        const json = await res.json();
-        const results = (json.images || []).filter((img: any) => img.role === 'result');
+      if (error) {
+        console.error('Error fetching images:', error);
+        return;
+      }
+
+      if (images) {
+        // Resolve URLs for images (public URL for image-results)
+        const resolvedImages = images.map((img) => {
+          let directUrl = img.signed_url;
+          if (img.role === 'result') {
+            const { data } = supabase.storage.from('image-results').getPublicUrl(img.storage_path);
+            directUrl = data?.publicUrl;
+          } else {
+            const { data } = supabase.storage.from('image-references').getPublicUrl(img.storage_path);
+            directUrl = data?.publicUrl;
+          }
+
+          return {
+            ...img,
+            signed_url: directUrl || img.storage_path,
+          };
+        });
+
+        const results = resolvedImages.filter((img) => img.role === 'result');
         setGenerationResults(results);
       }
     } catch (err) {
@@ -221,25 +241,41 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
         }
       }
 
-      // 4. Trigger Edge Function 'generate-images'
-      setStatusMessage('Acionando Google Gemini (Nano Banana) com rotação de chaves...');
+      // 4. Trigger Image Generation (via local proxy first, Edge Function fallback)
+      setStatusMessage('Acionando Google Imagen/Gemini (Nano Banana)...');
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(
-        'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/generate-images',
-        {
+      const payload = {
+        workflow_id: currentWfId,
+        individual_prompts: showIndividualPrompts ? individualPrompts : [],
+        retry_failed_only: retryFailedOnly,
+        model: selectedModel,
+      };
+
+      let response: Response;
+      try {
+        response = await fetch('/api/generate-images', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({
-            workflow_id: currentWfId,
-            individual_prompts: showIndividualPrompts ? individualPrompts : [],
-            retry_failed_only: retryFailedOnly,
-          }),
-        }
-      );
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error('Local fallback');
+      } catch {
+        response = await fetch(
+          'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/generate-images',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+      }
 
       const resultData = await response.json();
 
@@ -313,6 +349,7 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
         prompt={prompt}
         aspectRatio={aspectRatio}
         outputCount={outputCount}
+        selectedModel={selectedModel}
         results={generationResults}
         isGenerating={isGenerating}
         onAddImage={(file, role) => {
@@ -330,6 +367,7 @@ export const StudioPage: React.FC<StudioPageProps> = ({ initialWorkflowId }) => 
         onPromptChange={setPrompt}
         onRatioChange={setAspectRatio}
         onCountChange={setOutputCount}
+        onModelChange={setSelectedModel}
         onExecute={() => handleGenerate(false)}
         onPreviewImage={(url) => setPreviewModalUrl(url)}
       />

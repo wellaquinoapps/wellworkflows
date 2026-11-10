@@ -1,5 +1,56 @@
 export type AspectRatio = '9:16' | '16:9' | '1:1';
 
+export type ImageModel =
+  | 'free-flux-synthesis'
+  | 'imagen-3.0-generate-002'
+  | 'imagen-3.0-fast-generate-001'
+  | 'gemini-2.0-flash-exp'
+  | 'gemini-1.5-pro';
+
+export interface ImageModelInfo {
+  id: ImageModel;
+  name: string;
+  badge: string;
+  description: string;
+  speed: 'Rápido' | 'Padrão' | 'Avançado';
+  badgeColor: string;
+}
+
+export const IMAGE_MODELS: ImageModelInfo[] = [
+  {
+    id: 'free-flux-synthesis',
+    name: 'Nano Flux (100% Grátis)',
+    badge: 'GRATUITO',
+    description: 'Sem cartão, sem cadastro. Geração de alta qualidade livre.',
+    speed: 'Rápido',
+    badgeColor: 'emerald',
+  },
+  {
+    id: 'imagen-3.0-generate-002',
+    name: 'Google Imagen 3.0',
+    badge: 'GOOGLE KEY',
+    description: 'Melhor qualidade fotorrealista (requer chave Google).',
+    speed: 'Padrão',
+    badgeColor: 'amber',
+  },
+  {
+    id: 'imagen-3.0-fast-generate-001',
+    name: 'Google Imagen Fast',
+    badge: 'GOOGLE KEY',
+    description: 'Geração acelerada via chave Google.',
+    speed: 'Rápido',
+    badgeColor: 'sky',
+  },
+  {
+    id: 'gemini-2.0-flash-exp',
+    name: 'Gemini 2.0 Flash',
+    badge: 'MULTIMODAL',
+    description: 'Edição multimodal via chave Google.',
+    speed: 'Rápido',
+    badgeColor: 'violet',
+  },
+];
+
 export type WorkflowStatus = 'draft' | 'queued' | 'processing' | 'completed' | 'partial' | 'failed';
 
 export interface WorkflowImage {

@@ -7,7 +7,9 @@ import {
   AlertTriangle, 
   ShieldCheck, 
   RefreshCw, 
-  Layers
+  Layers,
+  Activity,
+  Gauge
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { ApiCredential } from '@/types';
@@ -30,6 +32,16 @@ export const SettingsPage: React.FC = () => {
 
   // Modals
   const [deleteModalCredId, setDeleteModalCredId] = useState<string | null>(null);
+
+  // Quota checking state
+  const [checkingQuotaIds, setCheckingQuotaIds] = useState<Record<string, boolean>>({});
+  const [quotaResults, setQuotaResults] = useState<Record<string, {
+    quotaStatus: 'available' | 'exhausted' | 'invalid';
+    remainingPercentage: number;
+    details: string;
+    retryAfter?: string | null;
+  }>>({});
+  const [isCheckingAll, setIsCheckingAll] = useState(false);
 
   useEffect(() => {
     loadCredentials();
@@ -172,6 +184,47 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleCheckQuota = async (id: string) => {
+    setCheckingQuotaIds((prev) => ({ ...prev, [id]: true }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/manage-credentials', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ action: 'check-quota', id }),
+      });
+
+      const json = await res.json();
+      if (res.ok) {
+        setQuotaResults((prev) => ({
+          ...prev,
+          [id]: {
+            quotaStatus: json.quotaStatus,
+            remainingPercentage: json.remainingPercentage,
+            details: json.details,
+            retryAfter: json.retryAfter,
+          },
+        }));
+        await loadCredentials();
+      }
+    } catch (err: any) {
+      console.error('Check quota error:', err);
+    } finally {
+      setCheckingQuotaIds((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleCheckAllQuotas = async () => {
+    setIsCheckingAll(true);
+    for (const cred of credentials) {
+      await handleCheckQuota(cred.id);
+    }
+    setIsCheckingAll(false);
+  };
+
   const handleDeleteCredential = async () => {
     if (!deleteModalCredId) return;
 
@@ -245,14 +298,28 @@ export const SettingsPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-2 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          {showAddForm ? 'Fechar Formulário' : 'Adicionar Chave'}
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          {credentials.length > 0 && (
+            <button
+              type="button"
+              disabled={isCheckingAll}
+              onClick={handleCheckAllQuotas}
+              className="px-4 py-2.5 bg-surface hover:bg-surface-card border border-surface-border text-slate-200 hover:text-white text-sm font-medium rounded-xl transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+            >
+              <Gauge className={cn("w-4 h-4 text-primary", isCheckingAll && "animate-spin")} />
+              {isCheckingAll ? 'Verificando Todas...' : 'Verificar Cotas de Todas'}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            {showAddForm ? 'Fechar Formulário' : 'Adicionar Chave'}
+          </button>
+        </div>
       </div>
 
       {/* Security Info Notice */}
@@ -409,6 +476,17 @@ export const SettingsPage: React.FC = () => {
               <div className="flex items-center gap-2 self-end sm:self-auto">
                 <button
                   type="button"
+                  disabled={checkingQuotaIds[cred.id]}
+                  onClick={() => handleCheckQuota(cred.id)}
+                  className="px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-hover border border-surface-border text-xs text-slate-300 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                  title="Consultar cota de consumo desta chave no Google"
+                >
+                  <Gauge className={cn("w-3.5 h-3.5 text-primary", checkingQuotaIds[cred.id] && "animate-spin")} />
+                  {checkingQuotaIds[cred.id] ? 'Checando...' : 'Verificar Cota'}
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => handleTestCredential(cred.id)}
                   className="px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-hover border border-surface-border text-xs text-slate-300 transition-colors flex items-center gap-1.5"
                 >
@@ -437,6 +515,48 @@ export const SettingsPage: React.FC = () => {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Quota details card if checked */}
+              {quotaResults[cred.id] && (
+                <div className="w-full mt-2.5 pt-2.5 border-t border-surface-border/60">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-primary" />
+                      Cota Disponível:
+                    </span>
+                    <span className={cn(
+                      "font-bold font-mono text-xs",
+                      quotaResults[cred.id].remainingPercentage > 50 && "text-emerald-400",
+                      quotaResults[cred.id].remainingPercentage <= 50 && quotaResults[cred.id].remainingPercentage > 0 && "text-amber-400",
+                      quotaResults[cred.id].remainingPercentage === 0 && "text-rose-400"
+                    )}>
+                      {quotaResults[cred.id].remainingPercentage}%
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
+                    <div
+                      className={cn(
+                        "h-full transition-all duration-500 rounded-full",
+                        quotaResults[cred.id].remainingPercentage > 50 && "bg-emerald-500",
+                        quotaResults[cred.id].remainingPercentage <= 50 && quotaResults[cred.id].remainingPercentage > 0 && "bg-amber-500",
+                        quotaResults[cred.id].remainingPercentage === 0 && "bg-rose-500"
+                      )}
+                      style={{ width: `${quotaResults[cred.id].remainingPercentage}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>{quotaResults[cred.id].details}</span>
+                    {quotaResults[cred.id].retryAfter && (
+                      <span className="text-amber-400 font-mono text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                        Reinicia em: {quotaResults[cred.id].retryAfter}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}

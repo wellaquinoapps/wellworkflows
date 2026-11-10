@@ -40,20 +40,12 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onOpenWorkflow }) => {
 
     setIsDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        'https://dttgyctwfbennrsmodkn.supabase.co/functions/v1/delete-workflow',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({ workflow_id: deleteWorkflowId }),
-        }
-      );
+      const { error } = await supabase
+        .from('workflows')
+        .delete()
+        .eq('id', deleteWorkflowId);
 
-      if (res.ok) {
+      if (!error) {
         setWorkflows(workflows.filter((w) => w.id !== deleteWorkflowId));
       }
       setDeleteWorkflowId(null);
